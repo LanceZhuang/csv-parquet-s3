@@ -6,11 +6,12 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.io.LocalOutputFile;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
@@ -20,6 +21,8 @@ import org.slf4j.LoggerFactory;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,14 +81,14 @@ public class CsvToParquetConverter {
 
     public void convertCsvToParquet(List<String> csvFilePaths, String outputDir) throws IOException, InterruptedException {
         logger.info("Starting conversion of {} CSV files to Parquet in directory: {}", csvFilePaths.size(), outputDir);
-        Files.createDirectories(java.nio.file.Path.of(outputDir));
+        Files.createDirectories(Path.of(outputDir));
 
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
         for (String csvFilePath : csvFilePaths) {
             executor.submit(() -> {
                 try {
-                    String fileName = java.nio.file.Path.of(csvFilePath).getFileName().toString().replace(".csv", ".parquet");
-                    String parquetFilePath = java.nio.file.Path.of(outputDir, fileName).toString();
+                    String fileName = Path.of(csvFilePath).getFileName().toString().replace(".csv", ".parquet");
+                    String parquetFilePath = Path.of(outputDir, fileName).toString();
                     convertSingleCsvToParquet(csvFilePath, parquetFilePath);
                     logger.info("Successfully converted {} to {}", csvFilePath, parquetFilePath);
                 } catch (Exception e) {
@@ -104,8 +107,8 @@ public class CsvToParquetConverter {
 
     private void convertSingleCsvToParquet(String csvFilePath, String parquetFilePath) throws IOException, CsvValidationException {
         logger.debug("Converting {} to {}", csvFilePath, parquetFilePath);
-        String fileName = java.nio.file.Path.of(csvFilePath).getFileName().toString().replace(".csv", "");
-        java.nio.file.Path tempParquetPath = Files.createTempFile("parquet_" + fileName + "_", ".parquet");
+        String fileName = Path.of(csvFilePath).getFileName().toString().replace(".csv", "");
+        Path tempParquetPath = Files.createTempFile("parquet_" + fileName + "_", ".parquet");
         try (CSVReader csvReader = new CSVReader(new FileReader(csvFilePath));
              ParquetWriter<GenericRecord> writer = buildParquetWriter(tempParquetPath.toString())) {
 
@@ -120,15 +123,16 @@ public class CsvToParquetConverter {
             }
         }
 
-        Files.move(tempParquetPath, java.nio.file.Path.of(parquetFilePath), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(tempParquetPath, Path.of(parquetFilePath), StandardCopyOption.REPLACE_EXISTING);
         logger.debug("Moved temp file to final destination: {}", parquetFilePath);
     }
 
     private ParquetWriter<GenericRecord> buildParquetWriter(String outputPath) throws IOException {
-        Path path = new Path(outputPath);
         Configuration conf = new Configuration();
         conf.setBoolean("fs.file.impl.disable.cache", true);
-        return AvroParquetWriter.<GenericRecord>builder(path)
+        // Use LocalOutputFile to avoid Hadoop path issues on Windows
+        OutputFile outputFile = new LocalOutputFile(Paths.get(outputPath));
+        return AvroParquetWriter.<GenericRecord>builder(outputFile)
                 .withSchema(avroSchema)
                 .withCompressionCodec(CompressionCodecName.SNAPPY)
                 .withRowGroupSize(rowGroupSize)
