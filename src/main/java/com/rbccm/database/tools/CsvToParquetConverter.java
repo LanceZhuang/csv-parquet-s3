@@ -135,10 +135,9 @@ public class CsvToParquetConverter {
         return AvroParquetWriter.<GenericRecord>builder(outputFile)
                 .withSchema(avroSchema)
                 .withCompressionCodec(CompressionCodecName.SNAPPY)
-                .withRowGroupSize(rowGroupSize)
+                .withRowGroupSize((long) rowGroupSize) // Cast to long
                 .withPageSize(ParquetWriter.DEFAULT_PAGE_SIZE)
                 .withConf(conf)
-                .withValidation(false)
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                 .build();
     }

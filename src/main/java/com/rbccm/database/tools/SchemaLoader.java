@@ -2,10 +2,12 @@ package com.rbccm.database.tools;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,9 +47,12 @@ public class SchemaLoader {
             PrimitiveType.PrimitiveTypeName primitiveType = PrimitiveType.PrimitiveTypeName.valueOf(type);
 
             if (logicalType != null && logicalType.equals("UTF8")) {
-                fieldTypes.add(new PrimitiveType(rep, primitiveType, fieldName, OriginalType.UTF8));
+                fieldTypes.add(Types.primitive(primitiveType, rep)
+                        .as(LogicalTypeAnnotation.stringType())
+                        .named(fieldName));
             } else {
-                fieldTypes.add(new PrimitiveType(rep, primitiveType, fieldName));
+                fieldTypes.add(Types.primitive(primitiveType, rep)
+                        .named(fieldName));
             }
         }
 

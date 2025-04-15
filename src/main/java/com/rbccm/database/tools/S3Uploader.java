@@ -2,11 +2,20 @@ package com.rbccm.database.tools;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
+import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,7 +27,27 @@ public class S3Uploader {
     private final int numThreads;
 
     public S3Uploader(int numThreads) {
-        this.s3Client = S3Client.builder().build();
+//        String accessKey = "swcusename";
+//        String secretKey = "d3elwQedbS/daqS4pf+ElQUb4beowqdqqqqfakecode";
+//        String endpoint = "https://s3.devfg.samplecorp.com:9021";
+
+        // Load from environment variables
+        String accessKey = System.getenv("S3_ACCESS_KEY");
+        String secretKey = System.getenv("S3_SECRET_KEY");
+        String endpoint = System.getenv("S3_ENDPOINT");
+
+        if (accessKey == null || secretKey == null || endpoint == null) {
+            throw new IllegalStateException("Missing S3 configuration in environment variables: S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT");
+        }
+
+        this.s3Client = S3Client.builder()
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)))
+                .endpointOverride(URI.create(endpoint))
+                .httpClient(ApacheHttpClient.builder().build())
+                // Region is a placeholder for custom endpoints
+                .region(Region.US_EAST_1)
+                .build();
         this.numThreads = numThreads;
     }
 
@@ -51,13 +80,24 @@ public class S3Uploader {
         logger.info("All uploads to S3 completed");
     }
 
-    private void uploadSingleFile(String bucketName, String key, String filePath) {
+    private void uploadSingleFile(String bucketName, String key, String filePath) throws IOException {
         logger.debug("Uploading {} to s3://{}/{}", filePath, bucketName, key);
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .build();
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
 
-        s3Client.putObject(putObjectRequest, RequestBody.fromFile(Path.of(filePath)));
+            s3Client.putObject(putObjectRequest, RequestBody.fromFile(Path.of(filePath)));
+        } catch (S3Exception | SdkClientException e) {
+            throw new IOException("Failed to upload " + filePath + " to S3", e);
+        }
+    }
+
+    // Optional: Close S3 client when done
+    public void close() {
+        if (s3Client != null) {
+            s3Client.close();
+        }
     }
 }
