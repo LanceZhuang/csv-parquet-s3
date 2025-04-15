@@ -123,7 +123,7 @@ public class CsvToParquetConverter {
             }
         }
 
-        Files.move(tempParquetPath, Path.of(parquetFilePath), StandardCopyOption.REPLACE_EXISTING);
+        Files.move(tempParquetPath, Path.of(parquetFilePath), StandardCopyOption.REPLACE_EXISTING);`
         logger.debug("Moved temp file to final destination: {}", parquetFilePath);
     }
 
