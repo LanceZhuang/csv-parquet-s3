@@ -1,63 +1,93 @@
 package com.rbccm.database.tools;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
+import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 public class SchemaLoader {
     private static final Logger logger = LoggerFactory.getLogger(SchemaLoader.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
-    public static MessageType loadSchema(String schemaFilePath) throws IOException {
-        logger.info("Loading schema from: {}", schemaFilePath);
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> schemaMap;
-        try (InputStream is = SchemaLoader.class.getClassLoader().getResourceAsStream(schemaFilePath)) {
+    public static MessageType loadSchema(String schemaPath) throws IOException {
+        logger.info("Loading schema from: {}", schemaPath);
+        try (InputStream is = SchemaLoader.class.getClassLoader().getResourceAsStream(schemaPath)) {
             if (is == null) {
-                logger.error("Schema file not found: {}", schemaFilePath);
-                throw new IOException("Schema file not found: " + schemaFilePath);
+                throw new IOException("Schema file not found: " + schemaPath);
             }
-            schemaMap = mapper.readValue(is, new TypeReference<Map<String, Object>>() {});
+            JsonNode schemaJson = mapper.readTree(is);
+            return parseSchema(schemaJson);
+        }
+    }
+
+    private static MessageType parseSchema(JsonNode schemaJson) {
+        String name = schemaJson.get("name").asText("record");
+        JsonNode fieldsJson = schemaJson.get("fields");
+        if (fieldsJson == null || !fieldsJson.isArray()) {
+            throw new IllegalArgumentException("Schema must contain a 'fields' array");
         }
 
-        String schemaName = (String) schemaMap.get("name");
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> fields = (List<Map<String, Object>>) schemaMap.get("fields");
+        Types.MessageTypeBuilder builder = Types.buildMessage();
+        for (JsonNode fieldJson : fieldsJson) {
+            String fieldName = fieldJson.get("name").asText();
+            String type = fieldJson.get("type").asText();
+            String repetition = fieldJson.has("repetition") ? fieldJson.get("repetition").asText() : "OPTIONAL";
+            String logicalType = fieldJson.has("logicalType") ? fieldJson.get("logicalType").asText() : null;
+            int precision = fieldJson.has("precision") ? fieldJson.get("precision").asInt() : 0;
+            int scale = fieldJson.has("scale") ? fieldJson.get("scale").asInt() : 0;
 
-        List<Type> fieldTypes = new ArrayList<>();
-        for (Map<String, Object> field : fields) {
-            String fieldName = (String) field.get("name");
-            String type = (String) field.get("type");
-            String repetition = (String) field.get("repetition");
-            String logicalType = (String) field.get("logicalType");
-
-            PrimitiveType.Repetition rep = PrimitiveType.Repetition.valueOf(repetition);
-            PrimitiveType.PrimitiveTypeName primitiveType = PrimitiveType.PrimitiveTypeName.valueOf(type);
-
-            if (logicalType != null && logicalType.equals("UTF8")) {
-                fieldTypes.add(Types.primitive(primitiveType, rep)
-                        .as(LogicalTypeAnnotation.stringType())
-                        .named(fieldName));
-            } else {
-                fieldTypes.add(Types.primitive(primitiveType, rep)
-                        .named(fieldName));
+            Type.Repetition rep;
+            try {
+                rep = Type.Repetition.valueOf(repetition);
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid repetition '{}' for field '{}', defaulting to OPTIONAL", repetition, fieldName);
+                rep = Type.Repetition.OPTIONAL;
             }
+
+            Types.PrimitiveBuilder<PrimitiveType> typeBuilder;
+            switch (type.toUpperCase()) {
+                case "INT32":
+                    typeBuilder = Types.primitive(PrimitiveType.PrimitiveTypeName.INT32, rep);
+                    break;
+                case "INT64":
+                    typeBuilder = Types.primitive(PrimitiveType.PrimitiveTypeName.INT64, rep);
+                    break;
+                case "BINARY":
+                    typeBuilder = Types.primitive(PrimitiveType.PrimitiveTypeName.BINARY, rep);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported type: " + type);
+            }
+
+            if (logicalType != null) {
+                switch (logicalType.toUpperCase()) {
+                    case "STRING":
+                        typeBuilder.as(org.apache.parquet.schema.LogicalTypeAnnotation.stringType());
+                        break;
+                    case "DATE":
+                        typeBuilder.as(org.apache.parquet.schema.LogicalTypeAnnotation.dateType());
+                        break;
+                    case "TIMESTAMP_MICROS":
+                        typeBuilder.as(org.apache.parquet.schema.LogicalTypeAnnotation.timestampType(false, org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS));
+                        break;
+                    case "DECIMAL":
+                        typeBuilder.as(org.apache.parquet.schema.LogicalTypeAnnotation.decimalType(scale, precision));
+                        break;
+                    default:
+                        logger.warn("Unsupported logical type: {} for field: {}", logicalType, fieldName);
+                }
+            }
+
+            builder.addField(typeBuilder.named(fieldName));
         }
 
-        MessageType schema = new MessageType(schemaName, fieldTypes);
-        logger.debug("Loaded schema: {}", schema);
-        return schema;
+        return builder.named(name);
     }
 }

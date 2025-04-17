@@ -3,7 +3,6 @@ package com.rbccm.database.tools;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
@@ -14,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -21,11 +21,31 @@ import static org.mockito.Mockito.*;
 public class S3UploaderTest {
     private S3Client mockS3Client;
     private S3Uploader uploader;
+    private Properties mockConfig;
 
     @BeforeEach
     void setUp() {
         mockS3Client = mock(S3Client.class);
-        uploader = new S3Uploader(mockS3Client, 2);
+        mockConfig = new Properties();
+
+        // Set configuration properties
+        mockConfig.setProperty("s3.accessKey", "test-access-key");
+        mockConfig.setProperty("s3.secretKey", "test-secret-key");
+        mockConfig.setProperty("s3.endpoint", "https://test-endpoint:9000");
+        mockConfig.setProperty("s3.region", "test-region");
+
+        // Use reflection to inject mock S3Client
+        uploader = new S3Uploader(2, mockConfig) {
+            {
+                try {
+                    java.lang.reflect.Field s3ClientField = S3Uploader.class.getDeclaredField("s3Client");
+                    s3ClientField.setAccessible(true);
+                    s3ClientField.set(this, mockS3Client);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to inject mock S3Client", e);
+                }
+            }
+        };
     }
 
     @Test
