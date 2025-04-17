@@ -1,0 +1,167 @@
+{
+  "name": "record",
+  "type": "record",
+  "fields": [
+    {
+      "name": "id",
+      "type": "INT32",
+      "repetition": "REQUIRED"
+    },
+    {
+      "name": "name",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "age",
+      "type": "INT32",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "amount",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "DECIMAL",
+      "precision": 10,
+      "scale": 2
+    },
+    {
+      "name": "birth_date",
+      "type": "INT32",
+      "repetition": "OPTIONAL",
+      "logicalType": "DATE"
+    },
+    {
+      "name": "description",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "large_count",
+      "type": "INT64",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "transaction_date",
+      "type": "INT32",
+      "repetition": "OPTIONAL",
+      "logicalType": "DATE"
+    },
+    {
+      "name": "flag",
+      "type": "INT32",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "code",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "account_id",
+      "type": "INT64",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "big_number",
+      "type": "INT64",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "huge_number",
+      "type": "INT64",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "currency_code",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "event_timestamp",
+      "type": "INT64",
+      "repetition": "OPTIONAL",
+      "logicalType": "TIMESTAMP_MICROS"
+    },
+    {
+      "name": "massive_count",
+      "type": "INT64",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "quantity",
+      "type": "INT32",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "notes",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "address",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "email",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "phone",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "order_id",
+      "type": "INT32",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "status",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "city",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "balance",
+      "type": "INT64",
+      "repetition": "OPTIONAL"
+    },
+    {
+      "name": "total",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "DECIMAL",
+      "precision": 38,
+      "scale": 2
+    },
+    {
+      "name": "comments",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    },
+    {
+      "name": "uuid",
+      "type": "BINARY",
+      "repetition": "OPTIONAL",
+      "logicalType": "STRING"
+    }
+  ]
+}
